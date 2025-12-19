@@ -16,7 +16,7 @@ export const LoginPage = ({ onLogin, error, isLoading }: LoginPageProps) => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src="/logo.png" alt="Logo" className="mx-auto mb-6 w-20 h-20" />
-          <h1 className="text-2xl font-semibold">Sign in to continue</h1>
+          <h1 className="text-2xl font-semibold">Entrez le mot de passe</h1>
         </div>
         <div
           className="rounded-lg shadow-2xl p-8 border"

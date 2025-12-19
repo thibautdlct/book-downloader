@@ -26,6 +26,8 @@ if env.ENABLE_LOGGING:
 # Create necessary directories
 env.TMP_DIR.mkdir(exist_ok=True)
 env.INGEST_DIR.mkdir(exist_ok=True)
+# Create thumbnails directory
+(env.INGEST_DIR / "thumbnails").mkdir(exist_ok=True)
 
 CROSS_FILE_SYSTEM = os.stat(env.TMP_DIR).st_dev != os.stat(env.INGEST_DIR).st_dev
 logger.info(f"STAT TMP_DIR: {os.stat(env.TMP_DIR)}")

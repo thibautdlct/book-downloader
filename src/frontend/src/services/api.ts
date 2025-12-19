@@ -14,7 +14,9 @@ const API = {
   config: `${API_BASE}/config`,
   login: `${API_BASE}/auth/login`,
   logout: `${API_BASE}/auth/logout`,
-  authCheck: `${API_BASE}/auth/check`
+  authCheck: `${API_BASE}/auth/check`,
+  downloadedBooks: `${API_BASE}/downloaded-books`,
+  thumbnail: `${API_BASE}/thumbnail`
 };
 
 // Custom error class for authentication failures
@@ -105,4 +107,41 @@ export const logout = async (): Promise<AuthResponse> => {
 
 export const checkAuth = async (): Promise<AuthResponse> => {
   return fetchJSON<AuthResponse>(API.authCheck);
+};
+
+export const getDownloadedBooks = async (): Promise<Book[]> => {
+  return fetchJSON<Book[]>(API.downloadedBooks);
+};
+
+export const getThumbnailUrl = (thumbnailPath: string | null | undefined): string => {
+  if (!thumbnailPath) {
+    return '/placeholder-book.png';
+  }
+  return `${API.thumbnail}?path=${encodeURIComponent(thumbnailPath)}`;
+};
+
+export const deleteDownloadedFile = async (filePath: string): Promise<void> => {
+  const url = `${API_BASE}/downloaded-file?path=${encodeURIComponent(filePath)}`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  
+  if (!res.ok) {
+    let errorMessage = `${res.status} ${res.statusText}`;
+    try {
+      const errorData = await res.json();
+      if (errorData.error) {
+        errorMessage = errorData.error;
+      }
+    } catch (e) {
+      // If we can't parse JSON, use the default error message
+    }
+    
+    if (res.status === 401) {
+      throw new AuthenticationError(errorMessage);
+    }
+    
+    throw new Error(errorMessage);
+  }
 };

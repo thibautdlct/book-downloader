@@ -9,6 +9,7 @@ services:
       target: cwa-bd
     environment:
       DEBUG: true
+      ADMIN_PASSWORD: admin123
     volumes:
       - /tmp/cwa-book-downloader:/tmp/cwa-book-downloader
       - /tmp/cwa-book-downloader-log:/var/log/cwa-book-downloader

@@ -20,7 +20,7 @@ import backend
 from book_manager import SearchUnavailable
 from config import BOOK_LANGUAGE, SUPPORTED_FORMATS, _SUPPORTED_BOOK_LANGUAGE
 from env import (
-    BUILD_VERSION, CALIBRE_WEB_URL, CWA_DB_PATH, DEBUG, FLASK_HOST, FLASK_PORT,
+    ADMIN_PASSWORD, BUILD_VERSION, CALIBRE_WEB_URL, CWA_DB_PATH, DEBUG, FLASK_HOST, FLASK_PORT,
     RELEASE_VERSION, USING_EXTERNAL_BYPASSER,
 )
 from logger import setup_logger
@@ -208,7 +208,13 @@ def login_required(f):
             logger.error(f"CWA_DB_PATH is set to {CWA_DB_PATH} but this is not a valid path")
             return jsonify({"error": "Internal Server Error"}), 500
         
-        # If no database is configured, allow access
+        # If ADMIN_PASSWORD is set, require authentication
+        if ADMIN_PASSWORD:
+            if 'user_id' not in session:
+                return jsonify({"error": "Unauthorized"}), 401
+            return f(*args, **kwargs)
+        
+        # If no database is configured and no ADMIN_PASSWORD, allow access
         if not CWA_DB_PATH:
             return f(*args, **kwargs)
         
@@ -490,6 +496,227 @@ def api_local_download() -> Union[Response, Tuple[Response, int]]:
         logger.error_trace(f"Local download error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/downloaded-file', methods=['GET'])
+@login_required
+def api_download_file() -> Union[Response, Tuple[Response, int]]:
+    """
+    Download a book file from the downloaded books directory.
+
+    Query Parameters:
+        path (str): Path to the book file to download
+
+    Returns:
+        flask.Response: The file if found, otherwise an error response.
+    """
+    file_path = request.args.get('path', '')
+    if not file_path:
+        return jsonify({"error": "No file path provided"}), 400
+
+    try:
+        from pathlib import Path
+        from env import INGEST_DIR, DOWNLOAD_PATHS
+        
+        # Security: ensure path is within allowed directories
+        full_path = Path(file_path)
+        if not full_path.is_absolute():
+            # If relative, resolve against INGEST_DIR
+            full_path = INGEST_DIR / full_path
+        
+        # Normalize and check if file exists
+        full_path = full_path.resolve()
+        
+        # Security check: ensure file is within allowed directories
+        allowed_dirs = [INGEST_DIR] + list(DOWNLOAD_PATHS.values())
+        allowed = any(
+            str(full_path).startswith(str(allowed_dir.resolve()))
+            for allowed_dir in allowed_dirs
+        )
+        
+        if not allowed:
+            return jsonify({"error": "Access denied"}), 403
+        
+        if not full_path.exists() or not full_path.is_file():
+            return jsonify({"error": "File not found"}), 404
+        
+        # Determine mimetype based on extension
+        mimetype = None
+        ext = full_path.suffix.lower()
+        if ext == '.epub':
+            mimetype = 'application/epub+zip'
+        elif ext == '.mobi':
+            mimetype = 'application/x-mobipocket-ebook'
+        elif ext == '.azw3':
+            mimetype = 'application/vnd.amazon.ebook'
+        elif ext == '.fb2':
+            mimetype = 'application/x-fictionbook+xml'
+        elif ext == '.djvu':
+            mimetype = 'image/vnd.djvu'
+        elif ext == '.cbz':
+            mimetype = 'application/x-cbz'
+        elif ext == '.cbr':
+            mimetype = 'application/x-cbr'
+        elif ext == '.pdf':
+            mimetype = 'application/pdf'
+        
+        # Get the filename and ensure proper encoding for Content-Disposition
+        filename = full_path.name
+        
+        # Create response with proper headers
+        response = send_file(
+            str(full_path),
+            as_attachment=True,
+            download_name=filename,
+            mimetype=mimetype
+        )
+        
+        # Ensure Content-Disposition header is set correctly with proper encoding
+        # Use RFC 5987 format to handle non-ASCII characters
+        from urllib.parse import quote
+        # Encode filename for Content-Disposition header (RFC 5987)
+        # Only use filename* to avoid latin1 encoding issues
+        encoded_filename = quote(filename.encode('utf-8'), safe='')
+        # Use only ASCII-safe filename for basic compatibility, and filename* for full UTF-8 support
+        ascii_filename = filename.encode('ascii', 'ignore').decode('ascii') or 'book' + full_path.suffix
+        response.headers['Content-Disposition'] = f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+        
+        return response
+
+    except Exception as e:
+        logger.error_trace(f"Download file error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/downloaded-books', methods=['GET'])
+@login_required
+def api_downloaded_books() -> Union[Response, Tuple[Response, int]]:
+    """
+    Get list of all downloaded books from ingest directories.
+
+    Returns:
+        flask.Response: JSON array of book information dictionaries
+    """
+    try:
+        books = backend.get_downloaded_books()
+        return jsonify(books)
+    except Exception as e:
+        logger.error_trace(f"Downloaded books error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/downloaded-file', methods=['DELETE'])
+@login_required
+def api_delete_downloaded_file() -> Union[Response, Tuple[Response, int]]:
+    """
+    Delete a downloaded book file and its associated thumbnail.
+
+    Query Parameters:
+        path (str): Path to the book file to delete
+
+    Returns:
+        flask.Response: Success or error response
+    """
+    file_path = request.args.get('path', '')
+    if not file_path:
+        return jsonify({"error": "No file path provided"}), 400
+
+    try:
+        from pathlib import Path
+        from env import INGEST_DIR, DOWNLOAD_PATHS
+        
+        # Security: ensure path is within allowed directories
+        full_path = Path(file_path)
+        if not full_path.is_absolute():
+            # If relative, resolve against INGEST_DIR
+            full_path = INGEST_DIR / full_path
+        
+        # Normalize and check if file exists
+        full_path = full_path.resolve()
+        
+        # Security check: ensure file is within allowed directories
+        allowed_dirs = [INGEST_DIR] + list(DOWNLOAD_PATHS.values())
+        allowed = any(
+            str(full_path).startswith(str(allowed_dir.resolve()))
+            for allowed_dir in allowed_dirs
+        )
+        
+        if not allowed:
+            return jsonify({"error": "Access denied"}), 403
+        
+        if not full_path.exists() or not full_path.is_file():
+            return jsonify({"error": "File not found"}), 404
+        
+        # Delete the book file
+        full_path.unlink()
+        logger.info(f"Deleted book file: {full_path}")
+        
+        # Delete associated thumbnail (if exists)
+        book_stem = full_path.stem
+        thumbnails_dir = INGEST_DIR / "thumbnails"
+        for ext in ['.jpg', '.jpeg', '.png', '.webp']:
+            thumbnail_path = thumbnails_dir / f"{book_stem}{ext}"
+            if thumbnail_path.exists():
+                thumbnail_path.unlink()
+                logger.info(f"Deleted thumbnail: {thumbnail_path}")
+                break
+        
+        return jsonify({"success": True, "message": "File and thumbnail deleted successfully"})
+
+    except Exception as e:
+        logger.error_trace(f"Delete downloaded file error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/thumbnail', methods=['GET'])
+@login_required
+def api_thumbnail() -> Union[Response, Tuple[Response, int]]:
+    """
+    Serve local thumbnail image.
+
+    Query Parameters:
+        path (str): Path to thumbnail file
+
+    Returns:
+        flask.Response: The thumbnail image if found, otherwise 404.
+    """
+    thumbnail_path = request.args.get('path', '')
+    if not thumbnail_path:
+        return jsonify({"error": "No thumbnail path provided"}), 400
+
+    try:
+        from pathlib import Path
+        from env import INGEST_DIR
+        
+        # Security: ensure path is within thumbnails directory
+        full_path = Path(thumbnail_path)
+        if not full_path.is_absolute():
+            # If relative, resolve against thumbnails directory
+            thumbnails_dir = INGEST_DIR / "thumbnails"
+            full_path = thumbnails_dir / full_path
+        
+        # Normalize and check if file exists
+        full_path = full_path.resolve()
+        thumbnails_dir = INGEST_DIR / "thumbnails"
+        
+        # Security check: ensure file is within thumbnails directory
+        if not str(full_path).startswith(str(thumbnails_dir.resolve())):
+            return jsonify({"error": "Access denied"}), 403
+        
+        if not full_path.exists() or not full_path.is_file():
+            return jsonify({"error": "Thumbnail not found"}), 404
+        
+        # Determine mimetype based on extension
+        mimetype = None
+        ext = full_path.suffix.lower()
+        if ext in ['.jpg', '.jpeg']:
+            mimetype = 'image/jpeg'
+        elif ext == '.png':
+            mimetype = 'image/png'
+        elif ext == '.webp':
+            mimetype = 'image/webp'
+        
+        return send_file(str(full_path), mimetype=mimetype)
+
+    except Exception as e:
+        logger.error_trace(f"Thumbnail error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/download/<book_id>/cancel', methods=['DELETE'])
 @login_required
 def api_cancel_download(book_id: str) -> Union[Response, Tuple[Response, int]]:
@@ -688,8 +915,16 @@ def api_login() -> Union[Response, Tuple[Response, int]]:
         password = data.get('password', '')
         remember_me = data.get('remember_me', False)
         
-        if not username or not password:
-            return jsonify({"error": "Username and password are required"}), 400
+        # If ADMIN_PASSWORD is set, only password is required
+        if ADMIN_PASSWORD:
+            if not password:
+                return jsonify({"error": "Mot de passe requis"}), 400
+            # Use default username if not provided
+            if not username:
+                username = 'admin'
+        else:
+            if not username or not password:
+                return jsonify({"error": "Username and password are required"}), 400
         
         # Check if account is locked due to failed login attempts
         if is_account_locked(username):
@@ -700,7 +935,36 @@ def api_login() -> Union[Response, Tuple[Response, int]]:
                 "error": f"Account temporarily locked due to multiple failed login attempts. Try again in {int(remaining_time)} minutes."
             }), 429
         
-        # If the database doesn't exist, authentication always succeeds
+        # If ADMIN_PASSWORD is set, use simple password authentication
+        if ADMIN_PASSWORD:
+            if password != ADMIN_PASSWORD:
+                # Record failed login attempt
+                is_now_locked = record_failed_login(username, ip_address)
+                
+                if is_now_locked:
+                    return jsonify({
+                        "error": f"Account locked due to {MAX_LOGIN_ATTEMPTS} failed login attempts. Try again in {LOCKOUT_DURATION_MINUTES} minutes."
+                    }), 429
+                else:
+                    attempts_remaining = MAX_LOGIN_ATTEMPTS - failed_login_attempts[username].get('count', 0)
+                    # Only show attempts remaining when 5 or fewer attempts remain
+                    if attempts_remaining <= 5:
+                        return jsonify({
+                            "error": f"Invalid password. {attempts_remaining} attempts remaining."
+                        }), 401
+                    else:
+                        return jsonify({
+                            "error": "Invalid password."
+                        }), 401
+            
+            # Successful authentication with ADMIN_PASSWORD
+            session['user_id'] = username
+            session.permanent = remember_me
+            clear_failed_logins(username)
+            logger.info(f"Login successful for user '{username}' from IP {ip_address} (ADMIN_PASSWORD)")
+            return jsonify({"success": True})
+        
+        # If the database doesn't exist and no ADMIN_PASSWORD, authentication always succeeds
         if not CWA_DB_PATH:
             session['user_id'] = username
             session.permanent = remember_me
@@ -790,14 +1054,22 @@ def api_auth_check() -> Union[Response, Tuple[Response, int]]:
         flask.Response: JSON with authentication status and whether auth is required.
     """
     try:
-        # If no database is configured, authentication is not required
+        # If ADMIN_PASSWORD is set, authentication is required
+        if ADMIN_PASSWORD:
+            is_authenticated = 'user_id' in session
+            return jsonify({
+                "authenticated": is_authenticated,
+                "auth_required": True
+            })
+        
+        # If no database is configured and no ADMIN_PASSWORD, authentication is not required
         if not CWA_DB_PATH:
             return jsonify({
                 "authenticated": True,
                 "auth_required": False
             })
         
-        # Check if user has a valid session
+        # Check if user has a valid session (database authentication)
         is_authenticated = 'user_id' in session
         return jsonify({
             "authenticated": is_authenticated,

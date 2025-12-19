@@ -1,4 +1,4 @@
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { LoginCredentials } from '../types';
 
 interface LoginFormProps {
@@ -53,38 +53,29 @@ export const LoginForm = ({
   isLoading = false,
   autoFocus = true,
 }: LoginFormProps) => {
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (autoFocus) {
-      usernameRef.current?.focus();
+      passwordRef.current?.focus();
     }
   }, [autoFocus]);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const usernameValue = (formData.get('username') as string)?.trim() || '';
     const passwordValue = (formData.get('password') as string) || '';
 
-    if (usernameValue && passwordValue && !isLoading) {
+    if (passwordValue && !isLoading) {
+      // Use "admin" as default username when only password is required
       onSubmit({
-        username: usernameValue,
+        username: 'admin',
         password: passwordValue,
         remember_me: rememberMe,
       });
-    }
-  };
-
-  const handleUsernameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      passwordRef.current?.focus();
     }
   };
 
@@ -105,37 +96,8 @@ export const LoginForm = ({
         onSubmit={handleSubmit}
       >
         <div className="mb-4">
-          <label htmlFor="username" className="block text-sm font-medium mb-2">
-            Username
-          </label>
-          <input
-            ref={usernameRef}
-            type="text"
-            id="username"
-            name="username"
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            inputMode="text"
-            enterKeyHint="next"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            onKeyDown={handleUsernameKeyDown}
-            disabled={isLoading}
-            className="w-full px-4 py-2.5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            style={{
-              backgroundColor: 'var(--input-background)',
-              borderColor: 'var(--border-color)',
-              color: 'var(--text-color)',
-            }}
-            required
-          />
-        </div>
-
-        <div className="mb-4">
           <label htmlFor="password" className="block text-sm font-medium mb-2">
-            Password
+            Mot de passe
           </label>
           <div className="relative">
             <input
@@ -148,7 +110,7 @@ export const LoginForm = ({
               autoCorrect="off"
               spellCheck={false}
               inputMode="text"
-              enterKeyHint="go"
+              enterKeyHint="done"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               disabled={isLoading}
@@ -184,7 +146,7 @@ export const LoginForm = ({
             style={{ borderColor: 'var(--border-color)' }}
           />
           <label htmlFor="remember-me" className="ml-2 text-sm">
-            Remember me for 7 days
+            Se souvenir de moi pendant 7 jours
           </label>
         </div>
 
@@ -217,10 +179,10 @@ export const LoginForm = ({
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              Signing in...
+              Connexion...
             </span>
           ) : (
-            'Sign In'
+            'Se connecter'
           )}
         </button>
       </form>

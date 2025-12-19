@@ -2,6 +2,7 @@
 
 import os
 import random
+import re
 import shutil
 import subprocess
 import threading
@@ -13,13 +14,72 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import book_manager
 from book_manager import SearchUnavailable
-from config import CUSTOM_SCRIPT
+from config import CUSTOM_SCRIPT, SUPPORTED_FORMATS
 from env import (
     DOWNLOAD_PATHS, DOWNLOAD_PROGRESS_UPDATE_INTERVAL, INGEST_DIR,
     MAIN_LOOP_SLEEP_TIME, MAX_CONCURRENT_DOWNLOADS, TMP_DIR, USE_BOOK_TITLE,
 )
 from logger import setup_logger
 from models import BookInfo, QueueStatus, SearchFilters, book_queue
+
+# Thumbnails directory (same directory as the book, with .thumbnail extension)
+THUMBNAILS_DIR = INGEST_DIR / "thumbnails"
+
+def _download_and_save_thumbnail(book_info: BookInfo, book_path: Path) -> Optional[str]:
+    """Download and save book thumbnail with the same name as the book.
+    
+    Args:
+        book_info: Book information containing preview URL
+        book_path: Path to the downloaded book file
+        
+    Returns:
+        Optional[str]: Path to saved thumbnail if successful, None otherwise
+    """
+    if not book_info.preview:
+        logger.debug(f"No preview URL for {book_info.title}")
+        return None
+    
+    try:
+        # Create thumbnails directory if it doesn't exist
+        THUMBNAILS_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Get thumbnail filename (same as book but with image extension)
+        book_stem = book_path.stem
+        # Determine image extension from preview URL
+        preview_url = book_info.preview.lower()
+        if '.jpg' in preview_url or '.jpeg' in preview_url:
+            ext = '.jpg'
+        elif '.png' in preview_url:
+            ext = '.png'
+        elif '.webp' in preview_url:
+            ext = '.webp'
+        else:
+            ext = '.jpg'  # Default to jpg
+        
+        thumbnail_path = THUMBNAILS_DIR / f"{book_stem}{ext}"
+        
+        # Download thumbnail
+        import requests
+        from config import PROXIES
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+        }
+        
+        response = requests.get(book_info.preview, headers=headers, proxies=PROXIES, timeout=10)
+        response.raise_for_status()
+        
+        # Save thumbnail
+        with open(thumbnail_path, 'wb') as f:
+            f.write(response.content)
+        
+        logger.info(f"Thumbnail saved: {thumbnail_path}")
+        return str(thumbnail_path)
+        
+    except Exception as e:
+        logger.debug(f"Could not download thumbnail for {book_info.title}: {e}")
+        return None
 
 logger = setup_logger(__name__)
 
@@ -259,6 +319,9 @@ def _download_book_with_cancellation(book_id: str, cancel_flag: Event) -> Option
                 
             os.rename(intermediate_path, final_path)
             logger.info(f"Download completed successfully: {book_info.title}")
+            
+            # Download and save thumbnail
+            _download_and_save_thumbnail(book_info, final_path)
             
         return str(final_path)
     except Exception as e:
@@ -511,3 +574,110 @@ download_coordinator_thread = threading.Thread(
 download_coordinator_thread.start()
 
 logger.info(f"Download system initialized with {MAX_CONCURRENT_DOWNLOADS} concurrent workers")
+
+def get_downloaded_books() -> List[Dict[str, Any]]:
+    """Get list of all downloaded books from ingest directories with local thumbnails.
+    
+    Returns:
+        List[Dict]: List of book information dictionaries with local thumbnail paths
+    """
+    downloaded_books = []
+    scanned_dirs = set()
+    
+    # Scan all download paths (including default INGEST_DIR)
+    all_dirs = list(DOWNLOAD_PATHS.values()) + [INGEST_DIR]
+    
+    for directory in all_dirs:
+        # Skip if already scanned (avoid duplicates)
+        dir_path = str(directory.resolve())
+        if dir_path in scanned_dirs:
+            continue
+        scanned_dirs.add(dir_path)
+        
+        if not directory.exists() or not directory.is_dir():
+            continue
+            
+        try:
+            # Scan for supported book formats
+            for file_path in directory.iterdir():
+                if not file_path.is_file():
+                    continue
+                    
+                # Check if file has a supported format extension
+                file_ext = file_path.suffix.lower().lstrip('.')
+                if file_ext not in SUPPORTED_FORMATS:
+                    continue
+                
+                # Skip temporary files
+                if file_path.name.endswith('.crdownload'):
+                    continue
+                
+                # Get file stats
+                stat = file_path.stat()
+                file_size = stat.st_size
+                file_size_str = _format_file_size(file_size)
+                modified_time = stat.st_mtime
+                
+                # Parse filename to extract metadata
+                # Format: "Author - Title (Year).ext" or just "Title.ext"
+                filename = file_path.stem
+                title = filename
+                author = None
+                year = None
+                
+                # Try to parse "Author - Title (Year)" format
+                if ' - ' in filename:
+                    parts = filename.split(' - ', 1)
+                    author = parts[0].strip()
+                    title_part = parts[1].strip()
+                    
+                    # Check for year in parentheses
+                    year_match = re.search(r'\((\d{4})\)\s*$', title_part)
+                    if year_match:
+                        year = year_match.group(1)
+                        title = title_part[:year_match.start()].strip()
+                    else:
+                        title = title_part
+                
+                # Check for local thumbnail (same name as book)
+                thumbnail_path = None
+                book_stem = file_path.stem
+                for ext in ['.jpg', '.jpeg', '.png', '.webp']:
+                    potential_thumbnail = THUMBNAILS_DIR / f"{book_stem}{ext}"
+                    if potential_thumbnail.exists():
+                        thumbnail_path = str(potential_thumbnail)
+                        break
+                
+                # Create book info dict
+                book_info = {
+                    'id': file_path.name,  # Use filename as ID
+                    'title': title or file_path.stem,
+                    'author': author,
+                    'year': year,
+                    'format': file_ext.upper(),
+                    'size': file_size_str,
+                    'download_path': str(file_path),
+                    'file_name': file_path.name,
+                    'modified_time': modified_time,
+                    'file_size': file_size,
+                    'preview': thumbnail_path,  # Local thumbnail path if exists
+                }
+                
+                downloaded_books.append(book_info)
+                
+        except Exception as e:
+            logger.error_trace(f"Error scanning directory {directory}: {e}")
+            continue
+    
+    # Sort by modified time (newest first)
+    downloaded_books.sort(key=lambda x: x.get('modified_time', 0), reverse=True)
+    
+    return downloaded_books
+
+def _format_file_size(size_bytes: int) -> str:
+    """Format file size in human-readable format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.1f} TB"

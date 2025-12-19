@@ -9,6 +9,7 @@ SESSION_COOKIE_SECURE_ENV = os.getenv("SESSION_COOKIE_SECURE", "false")
 
 CWA_DB = os.getenv("CWA_DB_PATH")
 CWA_DB_PATH = Path(CWA_DB) if CWA_DB else None
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 LOG_ROOT = Path(os.getenv("LOG_ROOT", "/var/log/"))
 LOG_DIR = LOG_ROOT / "cwa-book-downloader"
 TMP_DIR = Path(os.getenv("TMP_DIR", "/tmp/cwa-book-downloader"))
@@ -45,7 +46,7 @@ AA_DONATOR_KEY = os.getenv("AA_DONATOR_KEY", "").strip()
 _AA_BASE_URL = os.getenv("AA_BASE_URL", "auto").strip()
 _AA_ADDITIONAL_URLS = os.getenv("AA_ADDITIONAL_URLS", "").strip()
 _SUPPORTED_FORMATS = os.getenv("SUPPORTED_FORMATS", "epub,mobi,azw3,fb2,djvu,cbz,cbr").lower()
-_BOOK_LANGUAGE = os.getenv("BOOK_LANGUAGE", "en").lower()
+_BOOK_LANGUAGE = os.getenv("BOOK_LANGUAGE", "fr").lower()
 _CUSTOM_SCRIPT = os.getenv("CUSTOM_SCRIPT", "").strip()
 FLASK_HOST = os.getenv("FLASK_HOST", "0.0.0.0")
 FLASK_PORT = int(os.getenv("FLASK_PORT", "8084"))

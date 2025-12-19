@@ -8,7 +8,7 @@ services:
     environment:
       FLASK_PORT: 8084
       LOG_LEVEL: info
-      BOOK_LANGUAGE: en
+      BOOK_LANGUAGE: fr
       USE_BOOK_TITLE: true
       TZ: America/New_York
       UID: 1000

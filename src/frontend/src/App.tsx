@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, CSSProperties } from 'react';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import {
   Book,
   StatusData,
@@ -20,6 +20,7 @@ import { DownloadsSidebar } from './components/DownloadsSidebar';
 import { ToastContainer } from './components/ToastContainer';
 import { Footer } from './components/Footer';
 import { LoginPage } from './pages/LoginPage';
+import { DownloadedBooksPage } from './pages/DownloadedBooksPage';
 import { DEFAULT_LANGUAGES, DEFAULT_SUPPORTED_FORMATS } from './data/languages';
 import { LANGUAGE_OPTION_DEFAULT } from './utils/languageFilters';
 import { buildSearchQuery } from './utils/buildSearchQuery';
@@ -28,6 +29,7 @@ import './styles.css';
 const DEFAULT_FORMAT_SELECTION = DEFAULT_SUPPORTED_FORMATS.filter(format => format !== 'pdf');
 
 function App() {
+  const location = useLocation();
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authRequired, setAuthRequired] = useState<boolean>(true);
@@ -53,7 +55,7 @@ function App() {
     content: '',
     formats: DEFAULT_FORMAT_SELECTION,
   });
-  const { toasts, showToast, removeToast } = useToast();
+  const { toasts, showToast } = useToast();
   const updateAdvancedFilters = useCallback((updates: Partial<AdvancedFilterState>) => {
     setAdvancedFilters(prev => ({ ...prev, ...updates }));
   }, []);
@@ -412,12 +414,12 @@ function App() {
     <>
       <Header 
         calibreWebUrl={config?.calibre_web_url || ''} 
-        debug={config?.debug || false}
         logoUrl="/logo.png"
         showSearch={!isInitialState}
         searchInput={searchInput}
         onSearchChange={setSearchInput}
         onDownloadsClick={() => setDownloadsSidebarOpen(true)}
+        onBooksClick={() => navigate('/downloaded-books')}
         statusCounts={statusCounts}
         onLogoClick={handleResetSearch}
         authRequired={authRequired}
@@ -435,8 +437,6 @@ function App() {
         }}
         onAdvancedToggle={() => setShowAdvanced(!showAdvanced)}
         isLoading={isSearching}
-        onShowToast={showToast}
-        onRemoveToast={removeToast}
       />
       
       <AdvancedFilters
@@ -527,8 +527,17 @@ function App() {
   }
 
   const shouldRedirectFromLogin = !authRequired || isAuthenticated;
+  const isDownloadedBooksPage = location.pathname === '/downloaded-books';
+  
   const appElement = authRequired && !isAuthenticated ? (
     <Navigate to="/login" replace />
+  ) : isDownloadedBooksPage ? (
+    <DownloadedBooksPage
+      config={config}
+      authRequired={authRequired}
+      isAuthenticated={isAuthenticated}
+      onLogout={handleLogout}
+    />
   ) : (
     mainAppContent
   );
