@@ -486,11 +486,7 @@ function App() {
 
       </main>
 
-      <Footer 
-        buildVersion={config?.build_version} 
-        releaseVersion={config?.release_version} 
-        debug={config?.debug}
-      />
+      <Footer />
       <ToastContainer toasts={toasts} />
       
       {/* Downloads Sidebar */}

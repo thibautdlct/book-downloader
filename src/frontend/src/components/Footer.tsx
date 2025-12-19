@@ -1,15 +1,7 @@
 interface FooterProps {
-  buildVersion?: string;
-  releaseVersion?: string;
-  debug?: boolean;
 }
 
-export const Footer = ({ buildVersion, releaseVersion, debug }: FooterProps) => {
-  // Determine version display - show "dev" if no version is set
-  const versionDisplay = releaseVersion && releaseVersion !== 'N/A' 
-    ? releaseVersion 
-    : 'dev';
-  
+export const Footer = ({}: FooterProps) => {
   return (
     <footer
       className="mt-8 border-t py-6"
@@ -20,16 +12,11 @@ export const Footer = ({ buildVersion, releaseVersion, debug }: FooterProps) => 
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 text-left">
-          <p className="text-sm opacity-80">Calibre Web Book Downloader</p>
-          <p className="text-xs opacity-60 mt-1">
-            Version: {versionDisplay}
-            {buildVersion && buildVersion !== 'N/A' && ` (${buildVersion})`}
-            {debug && ' • Debug Mode'}
-          </p>
+          <p className="text-sm opacity-80">Book Downloader</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <a
-            href="https://github.com/calibrain/calibre-web-automated-book-downloader"
+            href="https://github.com/thibautdlct/book-downloader"
             className="opacity-80 hover:opacity-100"
             aria-label="GitHub"
           >

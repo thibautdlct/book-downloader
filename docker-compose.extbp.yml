@@ -1,6 +1,6 @@
 services:
   calibre-web-automated-book-downloader-extbp:
-    image: ghcr.io/calibrain/calibre-web-automated-book-downloader-extbp:latest
+    image: ghcr.io/thibautdlct/book-downloader-extbp:latest
     environment:
       FLASK_PORT: 8084
       LOG_LEVEL: info

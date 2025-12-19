@@ -34,7 +34,7 @@ An intuitive web interface for searching and requesting book downloads, designed
 1. Get the docker-compose.yml:
 
    ```bash
-   curl -O https://raw.githubusercontent.com/calibrain/calibre-web-automated-book-downloader/refs/heads/main/docker-compose.yml
+   curl -O https://raw.githubusercontent.com/thibautdlct/book-downloader/refs/heads/main/docker-compose.yml
    ```
 
 2. Start the service:
@@ -230,7 +230,7 @@ To use the Tor variant:
 
 1.  Get the Tor-specific docker-compose file:
     ```bash
-    curl -O https://raw.githubusercontent.com/calibrain/calibre-web-automated-book-downloader/refs/heads/main/docker-compose.tor.yml
+    curl -O https://raw.githubusercontent.com/thibautdlct/book-downloader/refs/heads/main/docker-compose.tor.yml
     ```
 2.  Start the service using this file:
     ```bash
@@ -268,7 +268,7 @@ This feature follows the same configuration of the built-in Cloudflare bypasser,
 
 1.  Get the extbp-specific docker-compose file:
     ```bash
-    curl -O https://raw.githubusercontent.com/calibrain/calibre-web-automated-book-downloader/refs/heads/main/docker-compose.extbp.yml
+    curl -O https://raw.githubusercontent.com/thibautdlct/book-downloader/refs/heads/main/docker-compose.extbp.yml
     ```
 2.  Start the service using this file:
     ```bash

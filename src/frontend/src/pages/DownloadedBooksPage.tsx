@@ -25,6 +25,7 @@ export const DownloadedBooksPage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toasts, showToast } = useToast();
 
   const loadBooks = async () => {
@@ -72,6 +73,25 @@ export const DownloadedBooksPage = ({
     setBookToDelete(null);
   };
 
+  // Filter books based on search query
+  const filteredBooks = books.filter((book) => {
+    if (!searchQuery.trim()) {
+      return true;
+    }
+    const query = searchQuery.toLowerCase();
+    const title = (book.title || '').toLowerCase();
+    const author = (book.author || '').toLowerCase();
+    const year = (book.year || '').toString();
+    const format = (book.format || '').toLowerCase();
+    
+    return (
+      title.includes(query) ||
+      author.includes(query) ||
+      year.includes(query) ||
+      format.includes(query)
+    );
+  });
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
       <Header
@@ -93,6 +113,59 @@ export const DownloadedBooksPage = ({
       />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Search Bar */}
+        <div className="mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Rechercher un livre (titre, auteur, année, format)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pl-10 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              style={{
+                backgroundColor: 'var(--input-background)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-color)',
+              }}
+            />
+            <svg
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 opacity-50"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+              stroke="currentColor"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+              />
+            </svg>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover-action"
+                aria-label="Effacer la recherche"
+              >
+                <svg
+                  className="w-4 h-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="2"
+                  stroke="currentColor"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center justify-between mb-4">
           <button
             type="button"
@@ -118,7 +191,15 @@ export const DownloadedBooksPage = ({
             Actualiser
           </button>
           <div className="text-sm opacity-70" style={{ color: 'var(--text-muted)' }}>
-            {books.length} {books.length === 1 ? 'livre' : 'livres'}
+            {searchQuery ? (
+              <>
+                {filteredBooks.length} / {books.length} {books.length === 1 ? 'livre' : 'livres'}
+              </>
+            ) : (
+              <>
+                {books.length} {books.length === 1 ? 'livre' : 'livres'}
+              </>
+            )}
           </div>
         </div>
 
@@ -129,15 +210,15 @@ export const DownloadedBooksPage = ({
               Chargement...
             </p>
           </div>
-        ) : books.length === 0 ? (
+        ) : filteredBooks.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-sm opacity-70" style={{ color: 'var(--text-muted)' }}>
-              Aucun livre téléchargé pour le moment
+              {searchQuery ? 'Aucun livre ne correspond à votre recherche' : 'Aucun livre téléchargé pour le moment'}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {books.map((book) => (
+            {filteredBooks.map((book) => (
               <div
                 key={book.id}
                 className="relative rounded-lg border hover:shadow-md transition-shadow overflow-hidden"
@@ -150,7 +231,7 @@ export const DownloadedBooksPage = ({
                     e.stopPropagation();
                     handleDeleteClick(book);
                   }}
-                  className="absolute top-2 right-2 z-10 flex items-center justify-center w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
+                  className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors shadow-md"
                   title="Supprimer le livre"
                   aria-label="Supprimer le livre"
                 >
@@ -159,25 +240,29 @@ export const DownloadedBooksPage = ({
                   </svg>
                 </button>
 
-                <div className="flex flex-col h-full">
+                <div className="flex flex-col sm:flex-col max-sm:flex-row h-full">
                   {/* Book Thumbnail */}
-                  <div className="flex-shrink-0 p-4 pb-2">
-                    <div className="flex justify-center">
+                  <div className="flex-shrink-0 w-full sm:w-full max-sm:w-[120px] max-sm:h-auto" style={{ aspectRatio: '2/3' }}>
+                    {book.preview ? (
                       <img
                         src={getThumbnailUrl(book.preview)}
                         alt={book.title || 'Book cover'}
-                        className="w-16 h-24 object-cover rounded shadow-sm"
-                        style={{ aspectRatio: '2/3' }}
+                        className="w-full h-full object-cover"
+                        style={{ objectPosition: 'top' }}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = '/placeholder-book.png';
                         }}
                       />
-                    </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-sm opacity-50" style={{ background: 'var(--border-muted)' }}>
+                        No Cover
+                      </div>
+                    )}
                   </div>
 
                   {/* Book Info */}
-                  <div className="flex-1 flex flex-col justify-between px-4 pb-4">
+                  <div className="flex-1 flex flex-col justify-between p-4 max-sm:flex-1 max-sm:min-w-0 max-sm:pr-10">
                     <div className="mb-3">
                       <h3 className="font-semibold text-sm mb-1 line-clamp-2" title={book.title} style={{ color: 'var(--text)' }}>
                         {book.title || 'Unknown Title'}
@@ -233,11 +318,7 @@ export const DownloadedBooksPage = ({
         )}
       </main>
 
-      <Footer
-        buildVersion={config?.build_version}
-        releaseVersion={config?.release_version}
-        debug={config?.debug}
-      />
+      <Footer />
       <ToastContainer toasts={toasts} />
 
       {/* Confirmation Modal */}

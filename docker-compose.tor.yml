@@ -1,6 +1,6 @@
 services:
   calibre-web-automated-book-downloader-tor:
-    image: ghcr.io/calibrain/calibre-web-automated-book-downloader-tor:latest
+    image: ghcr.io/thibautdlct/book-downloader-tor:latest
     environment:
       FLASK_PORT: 8084
       LOG_LEVEL: info
