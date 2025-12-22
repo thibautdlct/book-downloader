@@ -135,6 +135,21 @@ function App() {
       if (prevDownloadingIds.has(bookId) || prevQueuedIds.has(bookId)) {
         const book = currComplete[bookId];
         showToast(`${book.title || 'Book'} completed`, 'success');
+        
+        // Auto-download the file if download_path is available
+        if (book.download_path) {
+          // Small delay to ensure the file is fully written
+          setTimeout(() => {
+            const downloadUrl = `/api/downloaded-file?path=${encodeURIComponent(book.download_path!)}`;
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = ''; // Let browser determine filename from Content-Disposition
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }, 500);
+        }
       }
     });
 
@@ -313,6 +328,8 @@ function App() {
       await downloadBook(book.id);
       // Fetch status to update button states (detectChanges will show toast)
       await fetchStatus();
+      // Open Downloads sidebar to show progress
+      setDownloadsSidebarOpen(true);
     } catch (error) {
       console.error('Download failed:', error);
       showToast('Failed to queue download', 'error');

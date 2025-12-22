@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 import downloader
 import network
 from config import BOOK_LANGUAGE, SUPPORTED_FORMATS
-from env import AA_DONATOR_KEY, ALLOW_USE_WELIB, DEBUG_SKIP_SOURCES, DOWNLOAD_PATHS, PRIORITIZE_WELIB, USE_CF_BYPASS
+from env import AA_DONATOR_KEY, ALLOW_USE_WELIB, ALLOW_USE_ZLIB, DEBUG_SKIP_SOURCES, DOWNLOAD_PATHS, PRIORITIZE_WELIB, PRIORITIZE_ZLIB, USE_CF_BYPASS
 from logger import setup_logger
 from models import BookInfo, SearchFilters
 
@@ -243,10 +243,12 @@ def _parse_book_info_page(soup: BeautifulSoup, book_id: str) -> BookInfo:
     # 1. AA slow (no waitlist) - instant but can be slow
     # 2. Libgen - instant, external
     # 3. AA slow (waitlist) - has countdown timer but faster once started
-    # Note: Z-Library disabled - download tokens are session-bound
+    # 4. Z-Library - requires CF bypass (session-bound tokens)
     urls += slow_urls_no_waitlist if USE_CF_BYPASS else []
     urls += external_urls_libgen
     urls += slow_urls_with_waitlist if USE_CF_BYPASS else []
+    if ALLOW_USE_ZLIB and USE_CF_BYPASS:
+        urls += external_urls_z_lib
 
     for i in range(len(urls)):
         urls[i] = downloader.get_absolute_url(network.get_aa_base_url(), urls[i])
@@ -558,6 +560,13 @@ def download_book(book_info: BookInfo, book_path: Path, progress_callback: Optio
         logger.info(f"AA source rotation: nowait={nowait_rotation}, wait={wait_rotation}")
 
     links_queue = download_links
+    
+    # Zlib prioritization disabled - Anna's Archive stays first
+    # if PRIORITIZE_ZLIB and ALLOW_USE_ZLIB:
+    #     zlib_links = [l for l in links_queue if _label_source(l) == "zlib"]
+    #     if zlib_links:
+    #         logger.info("Prioritizing Zlib download URLs (PRIORITIZE_ZLIB enabled)")
+    #         links_queue = zlib_links + [l for l in links_queue if l not in zlib_links]
     
     # Fetch welib URLs upfront when prioritized
     welib_fallback_loaded = "welib" in DEBUG_SKIP_SOURCES  # Skip welib entirely if in debug skip list

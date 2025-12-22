@@ -1,6 +1,6 @@
 services:
   calibre-web-automated-book-downloader:
-    image: ghcr.io/thibautdlct/book-downloader:latest
+    image: ghcr.io/thibautdlct/book-downloader:dev
     # Uncomment to build the image from the Dockerfile for local testing changes.
     # Remember to comment out the image line above.
     #build: .
@@ -9,10 +9,13 @@ services:
       FLASK_PORT: 8084
       LOG_LEVEL: info
       BOOK_LANGUAGE: fr
-      USE_BOOK_TITLE: true
+      USE_BOOK_TITLE: "true"
+      USE_CF_BYPASS: "true"  # Activer le bypass Cloudflare
+      USING_EXTERNAL_BYPASSER: "false"  # Utiliser le bypasser interne (pas FlareSolverr)
       TZ: America/New_York
       UID: 1000
       GID: 100
+      ADMIN_PASSWORD: admin123  # Mot de passe pour l'authentification (changez-le !)
       # CWA_DB_PATH: /auth/app.db  # Uncomment to enable authentication (also uncomment volume below)
       # CALIBRE_WEB_URL: http://localhost:8080 # Uncomment and add your custom library URL to enable "Go To Library" button in the Web UI
       # SESSION_COOKIE_SECURE: 'true'  # Set to 'true' if accessing ONLY via HTTPS

@@ -561,23 +561,33 @@ def api_download_file() -> Union[Response, Tuple[Response, int]]:
         # Get the filename and ensure proper encoding for Content-Disposition
         filename = full_path.name
         
-        # Create response with proper headers
-        response = send_file(
-            str(full_path),
-            as_attachment=True,
-            download_name=filename,
-            mimetype=mimetype
-        )
-        
-        # Ensure Content-Disposition header is set correctly with proper encoding
-        # Use RFC 5987 format to handle non-ASCII characters
+        # Optimize for fast download: use direct file streaming
         from urllib.parse import quote
+        
         # Encode filename for Content-Disposition header (RFC 5987)
-        # Only use filename* to avoid latin1 encoding issues
         encoded_filename = quote(filename.encode('utf-8'), safe='')
-        # Use only ASCII-safe filename for basic compatibility, and filename* for full UTF-8 support
         ascii_filename = filename.encode('ascii', 'ignore').decode('ascii') or 'book' + full_path.suffix
-        response.headers['Content-Disposition'] = f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+        
+        # Use direct file streaming for better performance
+        def generate():
+            with open(full_path, 'rb') as f:
+                while True:
+                    chunk = f.read(8192)  # 8KB chunks for optimal performance
+                    if not chunk:
+                        break
+                    yield chunk
+        
+        response = Response(
+            generate(),
+            mimetype=mimetype,
+            headers={
+                'Content-Disposition': f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}',
+                'Content-Length': str(full_path.stat().st_size),
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        )
         
         return response
 

@@ -243,6 +243,25 @@ def download_url(
             status = _get_status_code(e)
             retryable = _is_retryable_error(e)
 
+            # For 403 errors from Zlib, refresh cookies and retry once
+            if status == 403 and USE_CF_BYPASS and attempt == 0:
+                parsed = urlparse(current_url)
+                if parsed.hostname and 'z-lib' in parsed.hostname:
+                    # Zlib may need fresh cookies - try accessing the page again to refresh cookies
+                    logger.info(f"403 from Zlib, refreshing cookies and retrying: {current_url}")
+                    try:
+                        # Access the referer page again to refresh cookies
+                        if referer:
+                            # Call html_get_page directly (it's in the same module)
+                            html_get_page(referer, use_bypasser=True, cancel_flag=cancel_flag)
+                            # Wait a moment for cookies to be extracted
+                            time.sleep(0.5)
+                            # Retry with fresh cookies
+                            attempt -= 1  # Don't count this as an attempt
+                            continue
+                    except Exception as refresh_e:
+                        logger.warning(f"Failed to refresh cookies: {refresh_e}")
+
             # Non-retryable errors
             if status in (403, 404):
                 logger.warning(f"Download failed ({status}): {current_url}")

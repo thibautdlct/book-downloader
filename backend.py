@@ -625,19 +625,35 @@ def get_downloaded_books() -> List[Dict[str, Any]]:
                 author = None
                 year = None
                 
-                # Try to parse "Author - Title (Year)" format
-                if ' - ' in filename:
-                    parts = filename.split(' - ', 1)
-                    author = parts[0].strip()
-                    title_part = parts[1].strip()
-                    
-                    # Check for year in parentheses
-                    year_match = re.search(r'\((\d{4})\)\s*$', title_part)
-                    if year_match:
-                        year = year_match.group(1)
-                        title = title_part[:year_match.start()].strip()
-                    else:
-                        title = title_part
+                # Check if filename is a MD5 hash (32 hex characters)
+                is_md5_hash = re.match(r'^[0-9a-f]{32}$', filename.lower()) is not None
+                
+                if is_md5_hash:
+                    # Try to fetch metadata from Anna's Archive using the MD5 hash
+                    try:
+                        book_metadata = book_manager.get_book_info(filename)
+                        if book_metadata:
+                            title = book_metadata.title or filename
+                            author = book_metadata.author
+                            year = book_metadata.year
+                            logger.debug(f"Retrieved metadata for hash {filename}: {title} by {author}")
+                    except Exception as e:
+                        logger.warning(f"Could not fetch metadata for hash {filename}: {e}")
+                        # Keep default values (hash as title, no author)
+                else:
+                    # Try to parse "Author - Title (Year)" format
+                    if ' - ' in filename:
+                        parts = filename.split(' - ', 1)
+                        author = parts[0].strip()
+                        title_part = parts[1].strip()
+                        
+                        # Check for year in parentheses
+                        year_match = re.search(r'\((\d{4})\)\s*$', title_part)
+                        if year_match:
+                            year = year_match.group(1)
+                            title = title_part[:year_match.start()].strip()
+                        else:
+                            title = title_part
                 
                 # Check for local thumbnail (same name as book)
                 thumbnail_path = None

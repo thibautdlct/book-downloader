@@ -57,6 +57,8 @@ _DEBUG_SKIP_SOURCES_RAW = os.getenv("DEBUG_SKIP_SOURCES", "").strip().lower()
 DEBUG_SKIP_SOURCES = set(s.strip() for s in _DEBUG_SKIP_SOURCES_RAW.split(",") if s.strip())
 PRIORITIZE_WELIB = string_to_bool(os.getenv("PRIORITIZE_WELIB", "false"))
 ALLOW_USE_WELIB = string_to_bool(os.getenv("ALLOW_USE_WELIB", "true"))
+PRIORITIZE_ZLIB = string_to_bool(os.getenv("PRIORITIZE_ZLIB", "true"))
+ALLOW_USE_ZLIB = string_to_bool(os.getenv("ALLOW_USE_ZLIB", "true"))
 
 # Version information from Docker build
 BUILD_VERSION = os.getenv("BUILD_VERSION", "N/A")

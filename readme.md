@@ -89,6 +89,8 @@ Note that if using TOR, the TZ will be calculated automatically based on IP.
 | `USE_BOOK_TITLE`       | Use book title as filename instead of ID                  | `false`                           |
 | `PRIORITIZE_WELIB`     | When downloading, download from WELIB first instead of AA | `false`                           |
 | `ALLOW_USE_WELIB`       | Allow usage of welib for downloading books if found there | `true`                            |
+| `PRIORITIZE_ZLIB`       | When downloading, download from Z-Library first instead of AA | `true`                            |
+| `ALLOW_USE_ZLIB`        | Allow usage of Z-Library for downloading books if found there | `true`                            |
 
 If you change `BOOK_LANGUAGE`, you can add multiple comma separated languages, such as `en,fr,ru` etc.  
 
