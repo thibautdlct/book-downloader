@@ -28,6 +28,15 @@ import './styles.css';
 
 const DEFAULT_FORMAT_SELECTION = DEFAULT_SUPPORTED_FORMATS.filter(format => format !== 'pdf');
 
+// Detect Safari iOS for download handling
+const isSafariIOS = (): boolean => {
+  const ua = window.navigator.userAgent;
+  const iOS = /iPad|iPhone|iPod/.test(ua);
+  const webkit = /WebKit/.test(ua);
+  const chrome = /CriOS/.test(ua); // Exclude Chrome on iOS
+  return iOS && webkit && !chrome;
+};
+
 function App() {
   const location = useLocation();
   // Authentication state
@@ -111,7 +120,7 @@ function App() {
     Object.keys(currQueued).forEach(bookId => {
       if (!prevQueued[bookId]) {
         const book = currQueued[bookId];
-        showToast(`${book.title || 'Book'} added to queue`, 'info');
+        showToast(`${book.title || 'Livre'} ajouté à la file d'attente`, 'info');
       }
     });
 
@@ -121,7 +130,7 @@ function App() {
     Object.keys(currDownloading).forEach(bookId => {
       if (!prevDownloading[bookId]) {
         const book = currDownloading[bookId];
-        showToast(`${book.title || 'Book'} started downloading`, 'info');
+        showToast(`${book.title || 'Livre'} téléchargement démarré`, 'info');
       }
     });
 
@@ -134,20 +143,32 @@ function App() {
     Object.keys(currComplete).forEach(bookId => {
       if (prevDownloadingIds.has(bookId) || prevQueuedIds.has(bookId)) {
         const book = currComplete[bookId];
-        showToast(`${book.title || 'Book'} completed`, 'success');
+        const bookTitle = book.title || 'Livre';
+        showToast(`${bookTitle} téléchargé`, 'success');
         
-        // Auto-download the file if download_path is available
-        if (book.download_path) {
+        // Auto-download the file only if this client initiated the download
+        if (initiatedDownloadsRef.current.has(bookId) && book.download_path) {
+          const downloadUrl = `/api/downloaded-file?path=${encodeURIComponent(book.download_path!)}`;
+          
+          // Remove from initiated set to prevent re-downloading
+          initiatedDownloadsRef.current.delete(bookId);
+          
           // Small delay to ensure the file is fully written
           setTimeout(() => {
-            const downloadUrl = `/api/downloaded-file?path=${encodeURIComponent(book.download_path!)}`;
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = ''; // Let browser determine filename from Content-Disposition
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // For Safari iOS, use window.location.href which triggers download
+            // This works because it's a direct navigation to the download URL
+            if (isSafariIOS()) {
+              window.location.href = downloadUrl;
+            } else {
+              // For other browsers, use link.click()
+              const link = document.createElement('a');
+              link.href = downloadUrl;
+              link.download = ''; // Let browser determine filename from Content-Disposition
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
           }, 500);
         }
       }
@@ -158,14 +179,17 @@ function App() {
     Object.keys(currError).forEach(bookId => {
       if (prevDownloadingIds.has(bookId) || prevResolvingIds.has(bookId) || prevQueuedIds.has(bookId)) {
         const book = currError[bookId];
-        const errorMsg = book.status_message || 'Download failed';
-        showToast(`${book.title || 'Book'}: ${errorMsg}`, 'error');
+        const errorMsg = book.status_message || 'Échec du téléchargement';
+        showToast(`${book.title || 'Livre'}: ${errorMsg}`, 'error');
       }
     });
   }, [showToast]);
 
   // Track previous status for change detection
   const prevStatusRef = useRef<StatusData>({});
+  
+  // Track books initiated by this client (to only auto-download for books we started)
+  const initiatedDownloadsRef = useRef<Set<string>>(new Set());
   
   // Check authentication on mount
   useEffect(() => {
@@ -200,13 +224,13 @@ function App() {
         setLoginError(null);
         navigate('/', { replace: true });
       } else {
-        setLoginError(response.error || 'Login failed');
+        setLoginError(response.error || 'Échec de la connexion');
       }
     } catch (error) {
       if (error instanceof Error) {
-        setLoginError(error.message || 'Login failed');
+        setLoginError(error.message || 'Échec de la connexion');
       } else {
-        setLoginError('Login failed');
+        setLoginError('Échec de la connexion');
       }
     } finally {
       setIsLoggingIn(false);
@@ -225,7 +249,7 @@ function App() {
       navigate('/login', { replace: true });
     } catch (error) {
       console.error('Logout failed:', error);
-      showToast('Logout failed', 'error');
+      showToast('Échec de la déconnexion', 'error');
     }
   };
 
@@ -289,7 +313,7 @@ function App() {
       const results = await searchBooks(query);
       setBooks(results);
       if (results.length === 0) {
-        showToast('No results found', 'error');
+        showToast('Aucun résultat trouvé', 'error');
       }
     } catch (error) {
       if (error instanceof AuthenticationError) {
@@ -300,10 +324,10 @@ function App() {
       } else {
         console.error('Search failed:', error);
         setBooks([]);
-        const message = error instanceof Error ? error.message : 'Search failed';
+        const message = error instanceof Error ? error.message : 'Échec de la recherche';
         const friendly = message.includes("Anna's Archive") || message.includes('Network restricted')
           ? message
-          : "Unable to reach Anna's Archive. Network may be restricted or mirrors blocked.";
+          : "Impossible d'atteindre Anna's Archive. Le réseau peut être restreint ou les miroirs bloqués.";
         showToast(friendly, 'error');
       }
     } finally {
@@ -318,21 +342,25 @@ function App() {
       setSelectedBook(book);
     } catch (error) {
       console.error('Failed to load book details:', error);
-      showToast('Failed to load book details', 'error');
+      showToast('Échec du chargement des détails du livre', 'error');
     }
   };
 
   // Download book
   const handleDownload = async (book: Book): Promise<void> => {
     try {
+      // Mark this book as initiated by this client
+      initiatedDownloadsRef.current.add(book.id);
       await downloadBook(book.id);
       // Fetch status to update button states (detectChanges will show toast)
       await fetchStatus();
       // Open Downloads sidebar to show progress
       setDownloadsSidebarOpen(true);
     } catch (error) {
+      // Remove from initiated set if download failed
+      initiatedDownloadsRef.current.delete(book.id);
       console.error('Download failed:', error);
-      showToast('Failed to queue download', 'error');
+      showToast('Échec de la mise en file d\'attente du téléchargement', 'error');
       throw error; // Re-throw so button components can reset their queuing state
     }
   };
@@ -396,28 +424,29 @@ function App() {
   const getButtonState = useCallback((bookId: string): ButtonStateInfo => {
     // Check error first
     if (currentStatus.error && currentStatus.error[bookId]) {
-      return { text: 'Failed', state: 'error' };
+      return { text: 'Échec', state: 'error' };
     }
     // Check completed
     if (currentStatus.complete && currentStatus.complete[bookId]) {
-      return { text: 'Downloaded', state: 'complete' };
+      const book = currentStatus.complete[bookId];
+      return { text: 'Téléchargé', state: 'complete', download_path: book.download_path };
     }
     // Check in-progress states
     if (currentStatus.downloading && currentStatus.downloading[bookId]) {
       const book = currentStatus.downloading[bookId];
       return {
-        text: 'Downloading',
+        text: 'Téléchargement',
         state: 'downloading',
         progress: book.progress
       };
     }
     if (currentStatus.resolving && currentStatus.resolving[bookId]) {
-      return { text: 'Resolving', state: 'resolving' };
+      return { text: 'Résolution', state: 'resolving' };
     }
     if (currentStatus.queued && currentStatus.queued[bookId]) {
-      return { text: 'Queued', state: 'queued' };
+      return { text: 'En attente', state: 'queued' };
     }
-    return { text: 'Download', state: 'download' };
+    return { text: 'Télécharger', state: 'download' };
   }, [currentStatus]);
 
   const bookLanguages = config?.book_languages || DEFAULT_LANGUAGES;

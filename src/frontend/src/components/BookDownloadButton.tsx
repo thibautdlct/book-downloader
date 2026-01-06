@@ -103,14 +103,17 @@ export const BookDownloadButton = ({
   const isCompleted = buttonState.state === 'complete';
   const hasError = buttonState.state === 'error';
   const isInProgress = ['queued', 'resolving', 'downloading'].includes(buttonState.state);
-  const isDisabled = buttonState.state !== 'download' || isQueuing || isCompleted;
+  const canDownloadLocal = isCompleted && buttonState.download_path;
+  const isDisabled = (buttonState.state !== 'download' && !canDownloadLocal) || isQueuing;
   const displayText = isQueuing ? 'Queuing...' : buttonState.text;
   const showCircularProgress = buttonState.state === 'downloading' && buttonState.progress !== undefined;
   const showSpinner = (isInProgress && !showCircularProgress) || isQueuing;
 
   const primaryStateClasses =
     isCompleted
-      ? 'bg-green-600 cursor-not-allowed'
+      ? canDownloadLocal
+        ? 'bg-green-600 hover:bg-green-700 cursor-pointer'
+        : 'bg-green-600 cursor-not-allowed'
       : hasError
       ? 'bg-red-600 cursor-not-allowed opacity-75'
       : isInProgress
@@ -119,7 +122,9 @@ export const BookDownloadButton = ({
 
   const iconStateClasses =
     isCompleted
-      ? 'bg-green-600 text-white cursor-not-allowed'
+      ? canDownloadLocal
+        ? 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
+        : 'bg-green-600 text-white cursor-not-allowed'
       : hasError
       ? 'bg-red-600 text-white cursor-not-allowed opacity-75'
       : isInProgress
@@ -137,8 +142,39 @@ export const BookDownloadButton = ({
   const sizeClass = variant === 'icon' ? iconVariantSizeClasses[size] : sizeClasses[size];
   const iconSizes = variant === 'icon' ? iconVariantIconSizes[size] : undefined;
 
+  // Detect Safari iOS for download handling
+  const isSafariIOS = (): boolean => {
+    const ua = window.navigator.userAgent;
+    const iOS = /iPad|iPhone|iPod/.test(ua);
+    const webkit = /WebKit/.test(ua);
+    const chrome = /CriOS/.test(ua); // Exclude Chrome on iOS
+    return iOS && webkit && !chrome;
+  };
+
   const handleDownload = async () => {
     if (isDisabled) return;
+    
+    // If completed and has download_path, download the local file
+    if (canDownloadLocal && buttonState.download_path) {
+      const downloadUrl = `/api/downloaded-file?path=${encodeURIComponent(buttonState.download_path)}`;
+      
+      // For Safari iOS, use window.location.href which triggers download
+      if (isSafariIOS()) {
+        window.location.href = downloadUrl;
+      } else {
+        // For other browsers, use link.click()
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = ''; // Let browser determine filename from Content-Disposition
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      return;
+    }
+    
+    // Otherwise, trigger the normal download flow
     setIsQueuing(true);
     try {
       await onDownload();
@@ -233,7 +269,7 @@ export const BookDownloadButton = ({
     <button
       className={`${baseClasses} ${sizeClass} ${stateClasses} ${widthClasses} ${className}`.trim()}
       onClick={handleDownload}
-      disabled={isDisabled || isInProgress}
+      disabled={isDisabled && !canDownloadLocal}
       data-action="download"
       style={style}
       aria-label={ariaLabel ?? displayText}

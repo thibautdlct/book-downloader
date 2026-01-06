@@ -38,6 +38,7 @@ export interface ButtonStateInfo {
   text: string;
   state: ButtonState;
   progress?: number; // Download progress 0-100
+  download_path?: string; // Path to downloaded file for re-download
 }
 
 // Language option

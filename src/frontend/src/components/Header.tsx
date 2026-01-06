@@ -23,6 +23,7 @@ interface HeaderProps {
   authRequired?: boolean;
   isAuthenticated?: boolean;
   onLogout?: () => void;
+  downloadsButtonLabel?: string;
 }
 
 export const Header = ({ 
@@ -41,6 +42,7 @@ export const Header = ({
   authRequired = false,
   isAuthenticated = false,
   onLogout,
+  downloadsButtonLabel = 'Téléchargement',
 }: HeaderProps) => {
   const [theme, setTheme] = useState<string>('auto');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -170,31 +172,48 @@ export const Header = ({
         </a>
       )}
 
-      {/* Downloads Button */}
+      {/* Downloads/Home Button */}
       {onDownloadsClick && (
         <button
           onClick={onDownloadsClick}
           className="relative flex items-center gap-2 px-3 py-2 rounded-full hover-action transition-all duration-200 text-gray-900 dark:text-gray-100"
-          aria-label="View downloads"
-          title="Downloads"
+          aria-label={downloadsButtonLabel === 'Accueil' ? 'Aller à l\'accueil' : 'Voir les téléchargements'}
+          title={downloadsButtonLabel}
         >
           <div className="relative">
-            <svg
-              className="w-5 h-5"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-              />
-            </svg>
-            {/* Show badge with appropriate color based on status */}
-            {(statusCounts.ongoing > 0 || statusCounts.completed > 0 || statusCounts.errored > 0) && (
+            {downloadsButtonLabel === 'Accueil' ? (
+              <svg
+                className="w-5 h-5"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="w-5 h-5"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                />
+              </svg>
+            )}
+            {/* Show badge with appropriate color based on status (only when not "Accueil") */}
+            {downloadsButtonLabel !== 'Accueil' && (statusCounts.ongoing > 0 || statusCounts.completed > 0 || statusCounts.errored > 0) && (
             <span 
               className={`absolute -top-1 -right-1 text-white text-[0.55rem] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center ${
                   statusCounts.errored > 0 
@@ -203,13 +222,13 @@ export const Header = ({
                     ? 'bg-blue-500' 
                     : 'bg-green-500'
                 }`}
-                title={`${statusCounts.ongoing} ongoing, ${statusCounts.completed} completed, ${statusCounts.errored} failed`}
+                title={`${statusCounts.ongoing} en cours, ${statusCounts.completed} terminés, ${statusCounts.errored} échoués`}
               >
                 {statusCounts.ongoing + statusCounts.completed + statusCounts.errored}
               </span>
             )}
           </div>
-          <span className="hidden sm:inline text-sm font-medium">Downloads</span>
+          <span className="hidden sm:inline text-sm font-medium">{downloadsButtonLabel}</span>
         </button>
       )}
 
@@ -299,7 +318,7 @@ export const Header = ({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
                   </svg>
                 )}
-                <span>Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
+                <span>Thème: {theme === 'light' ? 'Clair' : theme === 'dark' ? 'Sombre' : 'Auto'}</span>
               </button>
 
 
@@ -313,7 +332,7 @@ export const Header = ({
                   <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                   </svg>
-                  <span>Sign Out</span>
+                  <span>Déconnexion</span>
                 </button>
               )}
             </div>

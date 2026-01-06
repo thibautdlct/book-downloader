@@ -84,12 +84,12 @@ export const AdvancedFilters = ({
           </div>
           <div>
             <label htmlFor="author-input" className="block text-sm mb-1 opacity-80">
-              Author
+              Auteur
             </label>
             <input
               id="author-input"
               type="text"
-              placeholder="Author"
+              placeholder="Auteur"
               autoComplete="off"
               className="w-full px-3 py-2 rounded-md border"
               style={{
@@ -105,12 +105,12 @@ export const AdvancedFilters = ({
           </div>
           <div>
             <label htmlFor="title-input" className="block text-sm mb-1 opacity-80">
-              Title
+              Titre
             </label>
             <input
               id="title-input"
               type="text"
-              placeholder="Title"
+              placeholder="Titre"
               autoComplete="off"
               className="w-full px-3 py-2 rounded-md border"
               style={{
@@ -129,19 +129,19 @@ export const AdvancedFilters = ({
             value={lang}
             onChange={handleLangChange}
             defaultLanguageCodes={defaultLanguage}
-            label="Language"
+            label="Langue"
           />
           <DropdownList
-            label="Content"
+            label="Contenu"
             options={CONTENT_OPTIONS}
             value={content}
             onChange={handleContentChange}
-            placeholder="All"
+            placeholder="Tout"
           />
           <div>
             <DropdownList
               label="Formats"
-              placeholder="Any"
+              placeholder="Tous"
               options={formatOptions}
               value={formats}
               onChange={handleFormatsChange}

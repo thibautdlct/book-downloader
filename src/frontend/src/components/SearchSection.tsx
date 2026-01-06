@@ -58,7 +58,7 @@ export const SearchSection = ({
         isInitialState ? 'opacity-100 mb-6 sm:mb-8' : 'opacity-0 h-0 mb-0 overflow-hidden'
       }`}>
         <img src={logoUrl} alt="Logo" className="h-8 w-8" />
-        <h1 className="text-2xl font-semibold">Book Search & Download</h1>
+        <h1 className="text-2xl font-semibold">Recherche de livre</h1>
       </div>
       <div className={`flex flex-col gap-3 search-wrapper transition-all duration-500 ${
         isInitialState ? '' : 'hidden'

@@ -285,12 +285,12 @@ export const DownloadsSidebar = ({
           className="flex items-center justify-between p-4"
           style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
         >
-          <h2 className="text-lg font-semibold">Downloads</h2>
+          <h2 className="text-lg font-semibold">Téléchargement</h2>
           <button
             type="button"
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-full hover-action transition-colors"
-            aria-label="Close sidebar"
+            aria-label="Fermer le panneau"
           >
             <svg
               className="w-5 h-5"
@@ -316,14 +316,14 @@ export const DownloadsSidebar = ({
             className="flex-1 flex items-center justify-center px-3 py-2 h-10 rounded border text-sm hover-action transition-colors"
             style={{ borderColor: 'var(--border-muted)' }}
           >
-            Clear Completed
+            Effacer les terminés
           </button>
           <button
             type="button"
             onClick={onRefresh}
             className="flex items-center justify-center h-10 w-10 rounded-full text-sm hover-action transition-colors ml-auto"
-            aria-label="Refresh"
-            title="Refresh"
+            aria-label="Actualiser"
+            title="Actualiser"
           >
             <svg
               className="w-4 h-4"
@@ -351,7 +351,7 @@ export const DownloadsSidebar = ({
             allDownloadItems.map((item) => renderDownloadItem(item))
           ) : (
             <div className="text-center text-sm opacity-70 mt-8">
-              No downloads in queue
+              Aucun téléchargement en file d'attente
             </div>
           )}
         </div>
@@ -365,7 +365,7 @@ export const DownloadsSidebar = ({
               paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
             }}
           >
-            {activeCount} active {activeCount === 1 ? 'download' : 'downloads'}
+            {activeCount} {activeCount === 1 ? 'téléchargement' : 'téléchargements'} actif(s)
           </div>
         )}
       </div>
