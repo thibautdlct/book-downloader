@@ -91,7 +91,7 @@ logger.info(f"PROXIES: {PROXIES}")
 
 # Anna's Archive settings
 AA_BASE_URL = env._AA_BASE_URL
-AA_AVAILABLE_URLS = ["https://annas-archive.org", "https://annas-archive.se", "https://annas-archive.li"]
+AA_AVAILABLE_URLS = ["https://annas-archive.gl", "https://annas-archive.pk", "https://annas-archive.gd"]
 AA_AVAILABLE_URLS.extend(env._AA_ADDITIONAL_URLS.split(","))
 AA_AVAILABLE_URLS = [url.strip() for url in AA_AVAILABLE_URLS if url.strip()]
 
